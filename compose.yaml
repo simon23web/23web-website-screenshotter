@@ -1,0 +1,19 @@
+services:
+  screenshotter:
+    build: .
+    image: 23web/screenshotter:local
+    init: true
+    restart: unless-stopped
+    ports:
+      - "${BIND_ADDRESS:-127.0.0.1}:${PORT:-3000}:3000"
+    environment:
+      HOST: 0.0.0.0
+      PORT: 3000
+      CAPTURE_DIR: /app/captures
+    volumes:
+      - captures:/app/captures
+    shm_size: "1gb"
+    stop_grace_period: 15s
+
+volumes:
+  captures:

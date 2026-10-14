@@ -1,0 +1,12 @@
+node_modules
+captures
+.git
+.agents
+.codex
+.aws
+.env
+.env.*
+*.log
+test
+README.md
+.DS_Store

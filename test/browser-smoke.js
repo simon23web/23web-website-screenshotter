@@ -1,0 +1,30 @@
+import { chromium } from 'playwright';
+import assert from 'node:assert/strict';
+const baseUrl = process.env.BASE_URL || 'http://127.0.0.1:3000';
+const browser = await chromium.launch();
+try {
+ const page = await browser.newPage();
+ await page.goto(baseUrl);
+ assert.equal(await page.title(), '23Web — Website Screenshotter');
+ assert.equal(await page.locator('.brand img').getAttribute('alt'), '23Web');
+ await page.locator('[data-mode="list"]').click();
+ await page.locator('#url-list').fill(`${baseUrl}/\n${baseUrl}/\n${baseUrl}/missing`);
+ await page.locator('#load-pages').click();
+ assert.equal(await page.locator('.page-row').count(), 2);
+ await page.locator('#capture').click();
+ await page.waitForFunction(() => document.getElementById('progress-text').textContent.includes('Capture finished'), null, { timeout: 60000 });
+ assert.equal(await page.locator('#result-count').textContent(), '1');
+ assert.equal(await page.locator('.failed').count(), 1);
+ const image = await page.locator('.thumbnail img').getAttribute('src');
+ const bytes = await (await page.request.get(new URL(image, page.url()).href)).body();
+ assert.ok(bytes.readUInt32BE(20) > 900, 'Screenshot includes full page height');
+ const zip = await page.request.get(new URL(await page.locator('#download-all').getAttribute('href'), page.url()).href);
+ assert.equal((await zip.body()).subarray(0,2).toString(), 'PK');
+ await page.locator('[data-mode="sitemap"]').click();
+ await page.locator('#clear-pages').click();
+ await page.locator('#sitemap-file').setInputFiles({ name: 'sitemap.xml', mimeType: 'application/xml', buffer: Buffer.from('<urlset><url><loc>https://example.com/</loc></url></urlset>') });
+ await page.locator('#load-pages').click();
+ await page.waitForFunction(() => document.querySelectorAll('.page-row').length === 1);
+ await page.screenshot({ path: '/tmp/23web-ui.png', fullPage: true });
+ console.log('Passed: URL list, deduplication, full-page capture, failure isolation, ZIP, XML upload.');
+} finally { await browser.close(); }
